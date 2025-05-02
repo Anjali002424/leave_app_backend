@@ -3,4 +3,7 @@ flask
 cx_Oracle
 gunicorn
 pandas
-
+Flask==2.1.2
+cx_Oracle==8.3.0
+flask-session==0.4.0
+gunicorn==20.1.0
