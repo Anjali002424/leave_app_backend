@@ -1,16 +1,13 @@
 import cx_Oracle
-import streamlit as st
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 import pandas as pd
 from datetime import datetime
-from flask import Flask
 
-# Flask app initialization
+# Initialize Flask app
 app = Flask(__name__)
-
-# Root route for testing
-@app.route('/')
-def home():
-    return 'Welcome to the Leave Management System!'
+app.config['SECRET_KEY'] = 'mapra042473'  # Change it to a secure key
+app.config['SQLALCHEMY_DATABASE_URI'] = 'oracle+cx_oracle://perfect:perfect@192.168.0.224:1521/ho'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Database connection function
 def get_db_connection():
@@ -22,7 +19,7 @@ def get_db_connection():
         )
         return conn
     except cx_Oracle.DatabaseError as e:
-        st.error(f"Database connection failed: {e}")
+        flash(f"Database connection failed: {e}", 'error')
         return None
 
 # Get employee name after login
@@ -75,14 +72,14 @@ def get_leave_balance(emp_code):
 # Apply leave logic
 def apply_leave(emp_code, sdate, edate, ltype, reason):
     if ltype not in ['CL', 'SL', 'PL']:
-        st.error("Invalid leave type.")
+        flash("Invalid leave type.", 'error')
         return
 
     days = (edate - sdate).days + 1
     if ltype == 'SL':
         count_weekends = sum(1 for i in range(days) if (sdate + pd.DateOffset(i)).weekday() >= 5)
         days -= count_weekends
-        st.write(f"SL days to be deducted: {days} (after excluding weekends)")
+        flash(f"SL days to be deducted: {days} (after excluding weekends)", 'info')
 
     sdate_str = sdate.strftime('%d-%m-%Y')
     edate_str = edate.strftime('%d-%m-%Y')
@@ -95,7 +92,7 @@ def apply_leave(emp_code, sdate, edate, ltype, reason):
             break
 
     if remaining_balance < days:
-        st.error(f"Not enough {ltype} leave balance. Needed: {days}, Available: {remaining_balance}")
+        flash(f"Not enough {ltype} leave balance. Needed: {days}, Available: {remaining_balance}", 'error')
         return
 
     updated_balance = remaining_balance - days
@@ -111,9 +108,9 @@ def apply_leave(emp_code, sdate, edate, ltype, reason):
             VALUES (:1, TO_DATE(:2, 'DD-MM-YYYY'), TO_DATE(:3, 'DD-MM-YYYY'), :4, :5, :6, :7)
         """, (emp_code, sdate_str, edate_str, ltype, days, updated_balance, reason))
         conn.commit()
-        st.success(f"Leave applied for {days} day(s). New {ltype} balance: {updated_balance}")
+        flash(f"Leave applied for {days} day(s). New {ltype} balance: {updated_balance}", 'success')
     except cx_Oracle.DatabaseError as e:
-        st.error(f"Error applying leave: {e}")
+        flash(f"Error applying leave: {e}", 'error')
     finally:
         conn.close()
 
@@ -137,61 +134,68 @@ def get_leave_history(emp_code):
     conn.close()
     return df
 
-# Main Streamlit App
-def main():
-    st.title("Employee Leave Application")
+# Home route - Update to show login page
+@app.route('/')
+def home():
+    return redirect(url_for('login'))  # Redirect to the login page
 
-    # Login section
-    st.subheader("Login")
-    emp_code = st.text_input("Enter Employee Code")
-    password = st.text_input("Enter Password", type="password")
+# Login route - Display login form
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        emp_code = request.form['emp_code']
+        password = request.form['password']
 
-    if st.button("Login"):
         if emp_code and password:
             emp_name = get_employee_name(emp_code)
             if emp_name:
-                st.session_state['emp_code'] = emp_code
-                st.session_state['emp_name'] = emp_name
-                st.session_state['logged_in'] = True
-                st.success(f"Welcome, {emp_name}!")
+                session['emp_code'] = emp_code
+                session['emp_name'] = emp_name
+                session['logged_in'] = True
+                flash(f"Welcome, {emp_name}!", 'success')
+                return redirect(url_for('dashboard'))
             else:
-                st.error("Invalid credentials.")
+                flash("Invalid credentials.", 'error')
         else:
-            st.error("Please enter both credentials.")
+            flash("Please enter both credentials.", 'error')
 
-    # Post-login
-    if st.session_state.get('logged_in'):
-        st.subheader(f"Leave Application - {st.session_state['emp_name']}")
+    return render_template('login.html')
 
-        # Show leave balances
-        leave_balance = get_leave_balance(st.session_state['emp_code'])
-        st.write("### Leave Balances:")
-        for lt, bal in leave_balance:
-            st.write(f"{lt}: {bal} days")
+# Dashboard route after login
+@app.route('/dashboard', methods=['GET', 'POST'])
+def dashboard():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
 
-        # Leave application form
-        st.write("### Apply for Leave")
-        sdate = st.date_input("Start Date")
-        edate = st.date_input("End Date")
-        ltype = st.selectbox("Leave Type", ["CL", "SL", "PL"])
-        reason = st.text_area("Reason for Leave")
+    emp_code = session.get('emp_code')
+    emp_name = session.get('emp_name')
 
-        if st.button("Apply Leave"):
-            if sdate <= edate:
-                apply_leave(st.session_state['emp_code'], sdate, edate, ltype, reason)
-            else:
-                st.error("Start date cannot be after end date.")
+    # Show leave balances
+    leave_balance = get_leave_balance(emp_code)
 
-        # Leave History
-        st.write("### Leave History")
-        history_df = get_leave_history(st.session_state['emp_code'])
-        if not history_df.empty:
-            st.dataframe(history_df, use_container_width=True)
+    if request.method == 'POST':
+        sdate = datetime.strptime(request.form['sdate'], '%Y-%m-%d')
+        edate = datetime.strptime(request.form['edate'], '%Y-%m-%d')
+        ltype = request.form['ltype']
+        reason = request.form['reason']
+
+        if sdate <= edate:
+            apply_leave(emp_code, sdate, edate, ltype, reason)
         else:
-            st.info("No leave history found.")
+            flash("Start date cannot be after end date.", 'error')
+
+    # Leave History
+    history_df = get_leave_history(emp_code)
+
+    return render_template('dashboard.html', emp_name=emp_name, leave_balance=leave_balance, history_df=history_df)
+
+# Logout route
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash("You have been logged out.", 'success')
+    return redirect(url_for('login'))
 
 # Run the app
 if __name__ == "__main__":
-    if 'logged_in' not in st.session_state:
-        st.session_state['logged_in'] = False
-    main()
+    app.run(debug=True)
