@@ -1,3 +1,5 @@
-Flask
+streamlit
+flask
 cx_Oracle
 gunicorn
+pandas
