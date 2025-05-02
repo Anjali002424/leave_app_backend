@@ -3,27 +3,21 @@ import cx_Oracle
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_session import Session
 
-# Initialize Flask app
+# Initialize the Flask app
 app = Flask(__name__)
 
-# Session config
+# Session configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'mapra042473')
 app.config['SESSION_TYPE'] = 'filesystem'
 Session(app)
 
-# Database connection
+# Function to get Oracle DB connection
 def get_db_connection():
-    # Replace with your actual values
-    username = 'perfect'
-    password = 'perfect'
-    dsn = cx_Oracle.makedsn('192.168.0.224', 1521, service_name='ho')
-
-    try:
-        connection = cx_Oracle.connect(user=username, password=password, dsn=dsn)
-        return connection
-    except cx_Oracle.DatabaseError as e:
-        print("Database connection error:", e)
-        return None
+    # Set your Oracle TNS path or DSN settings
+    os.environ['TNS_ADMIN'] = r'C:\Program Files\Oracle Client for Microsoft Tools\network\admin'  # Adjust as needed
+    dsn = cx_Oracle.makedsn('192.168.0.224', '1521', service_name='ho')
+    connection = cx_Oracle.connect(user='perfect', password='perfect', dsn=dsn)
+    return connection
 
 # Home route (login)
 @app.route('/login', methods=['GET', 'POST'])
@@ -43,35 +37,34 @@ def login():
 
     return render_template('login.html')
 
-# Function to check credentials
+# Credential checker
 def check_credentials(emp_code, password):
     connection = get_db_connection()
-    if not connection:
-        return None
+    cursor = connection.cursor()
 
     try:
-        cursor = connection.cursor()
-        cursor.execute(
-            "SELECT emp_name FROM employee_mas WHERE emp_code = :emp_code AND password = :password",
-            {'emp_code': emp_code, 'password': password}
-        )
+        cursor.execute("""
+            SELECT EMPNAME FROM EMPLOYEE_MAS 
+            WHERE EMPCODE = :emp_code AND PASSWORD = :password
+        """, {'emp_code': emp_code, 'password': password})
+
         result = cursor.fetchone()
         return result[0] if result else None
     finally:
+        cursor.close()
         connection.close()
 
 # Dashboard route
 @app.route('/dashboard')
 def dashboard():
-    if 'logged_in' not in session or not session['logged_in']:
+    if not session.get('logged_in'):
         return redirect(url_for('login'))
-
     return render_template('dashboard.html', emp_name=session['emp_name'])
 
-# Apply leave route
+# Leave application route
 @app.route('/apply_leave', methods=['GET', 'POST'])
 def apply_leave():
-    if 'logged_in' not in session or not session['logged_in']:
+    if not session.get('logged_in'):
         return redirect(url_for('login'))
 
     if request.method == 'POST':
@@ -88,13 +81,10 @@ def apply_leave():
 # Save leave application
 def save_leave_application(emp_code, leave_start, leave_end, leave_reason, leave_type):
     connection = get_db_connection()
-    if not connection:
-        return
-
+    cursor = connection.cursor()
     try:
-        cursor = connection.cursor()
         cursor.execute("""
-            INSERT INTO leave_application_emp (emp_code, leave_start, leave_end, leave_reason, leave_type)
+            INSERT INTO LEAVE_APPLICATION_EMP (EMPCODE, LEAVE_START, LEAVE_END, LEAVE_REASON, LEAVE_TYPE)
             VALUES (:emp_code, :leave_start, :leave_end, :leave_reason, :leave_type)
         """, {
             'emp_code': emp_code,
@@ -105,12 +95,9 @@ def save_leave_application(emp_code, leave_start, leave_end, leave_reason, leave
         })
         connection.commit()
     finally:
+        cursor.close()
         connection.close()
 
-# Default route
-@app.route('/')
-def home():
-    return redirect(url_for('login'))
-
+# Run the Flask app
 if __name__ == '__main__':
     app.run(debug=True)
