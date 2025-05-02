@@ -2,7 +2,6 @@ import os
 import cx_Oracle
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_session import Session
-from werkzeug.utils import quote as url_quote  # updated for newer Werkzeug
 
 # Initialize the Flask app
 app = Flask(__name__)
