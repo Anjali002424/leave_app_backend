@@ -6,58 +6,7 @@
     <title>Dashboard</title>
 </head>
 <body>
-    <h1>Welcome, {{ emp_name }}!</h1>
-
-    <h2>Leave Balances:</h2>
-    <ul>
-        {% for ltype, balance in leave_balance %}
-        <li>{{ ltype }}: {{ balance }} days</li>
-        {% endfor %}
-    </ul>
-
-    <h3>Apply for Leave:</h3>
-    <form method="POST">
-        <label for="sdate">Start Date:</label>
-        <input type="date" id="sdate" name="sdate" required><br><br>
-        <label for="edate">End Date:</label>
-        <input type="date" id="edate" name="edate" required><br><br>
-        <label for="ltype">Leave Type:</label>
-        <select id="ltype" name="ltype">
-            <option value="CL">CL</option>
-            <option value="SL">SL</option>
-            <option value="PL">PL</option>
-        </select><br><br>
-        <label for="reason">Reason:</label>
-        <textarea id="reason" name="reason" required></textarea><br><br>
-        <input type="submit" value="Apply Leave">
-    </form>
-
-    <h3>Leave History:</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>Start Date</th>
-                <th>End Date</th>
-                <th>Leave Type</th>
-                <th>Days Taken</th>
-                <th>Balance After</th>
-                <th>Reason</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in history_df.iterrows() %}
-            <tr>
-                <td>{{ row.START_DATE }}</td>
-                <td>{{ row.END_DATE }}</td>
-                <td>{{ row.LTYPE }}</td>
-                <td>{{ row["Days Taken"] }}</td>
-                <td>{{ row["Balance After"] }}</td>
-                <td>{{ row.REASON }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-    <a href="{{ url_for('logout') }}">Logout</a>
+    <h2>Welcome {{ emp_name }}!</h2>
+    <a href="{{ url_for('apply_leave') }}">Apply for Leave</a>
 </body>
 </html>
