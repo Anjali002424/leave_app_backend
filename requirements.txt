@@ -1,8 +1,7 @@
-
-Flask==2.2.0  # or the latest version of Flask
+Flask==2.2.0
 cx_Oracle==8.3.0
 flask-session==0.4.0
 gunicorn==20.1.0
-werkzeug==2.1.0  # The latest version
-streamlit
-pandas
+werkzeug>=2.2.0  # Update to be compatible with Flask 2.2.0
+streamlit==1.45.0
+pandas==2.2.3
