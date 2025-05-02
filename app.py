@@ -3,39 +3,29 @@ import cx_Oracle
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_session import Session
 
-# Initialize the Flask app
+# Initialize Flask app
 app = Flask(__name__)
 
-# Set up session management
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'mapra042473')  # Set from environment variable
-app.config['SESSION_TYPE'] = 'filesystem'  # Can also use 'redis' for scaling
+# Session config
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'mapra042473')
+app.config['SESSION_TYPE'] = 'filesystem'
 Session(app)
 
-# Function to get database connection using TNS
+# Database connection
 def get_db_connection():
-    # Path to your TNS file
-    tns_path = r'C:\Program Files\Oracle Client for Microsoft Tools\network\admin'  # Use raw string for Windows path
-
-    # Set TNS_ADMIN environment variable to TNS file path
-    os.environ['TNS_ADMIN'] = tns_path
-
-    # Oracle DB credentials
+    # Replace with your actual values
     username = 'perfect'
     password = 'perfect'
+    dsn = cx_Oracle.makedsn('192.168.0.224', 1521, service_name='ho')
 
-    # Use the TNS configuration
-    dsn = cx_Oracle.makedsn('192.168.0.224', '1521', service_name='ho')
+    try:
+        connection = cx_Oracle.connect(user=username, password=password, dsn=dsn)
+        return connection
+    except cx_Oracle.DatabaseError as e:
+        print("Database connection error:", e)
+        return None
 
-    # Create a connection using the TNS configuration
-    connection = cx_Oracle.connect(username, password, dsn)
-    return connection
-
-# Home route (redirect to login)
-@app.route('/')
-def index():
-    return redirect(url_for('login'))
-
-# Login route
+# Home route (login)
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -43,7 +33,6 @@ def login():
         password = request.form['password']
 
         emp_name = check_credentials(emp_code, password)
-        
         if emp_name:
             session['emp_code'] = emp_code
             session['emp_name'] = emp_name
@@ -54,18 +43,22 @@ def login():
 
     return render_template('login.html')
 
-# Function to check user credentials
+# Function to check credentials
 def check_credentials(emp_code, password):
     connection = get_db_connection()
-    cursor = connection.cursor()
-    
-    cursor.execute("SELECT emp_name FROM employee_mas WHERE emp_code = :emp_code AND password = :password", 
-                   {'emp_code': emp_code, 'password': password})
-    
-    result = cursor.fetchone()
-    connection.close()
-    
-    return result[0] if result else None
+    if not connection:
+        return None
+
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            "SELECT emp_name FROM employee_mas WHERE emp_code = :emp_code AND password = :password",
+            {'emp_code': emp_code, 'password': password}
+        )
+        result = cursor.fetchone()
+        return result[0] if result else None
+    finally:
+        connection.close()
 
 # Dashboard route
 @app.route('/dashboard')
@@ -75,7 +68,7 @@ def dashboard():
 
     return render_template('dashboard.html', emp_name=session['emp_name'])
 
-# Leave application route
+# Apply leave route
 @app.route('/apply_leave', methods=['GET', 'POST'])
 def apply_leave():
     if 'logged_in' not in session or not session['logged_in']:
@@ -88,30 +81,36 @@ def apply_leave():
         leave_type = request.form['leave_type']
 
         save_leave_application(session['emp_code'], leave_start, leave_end, leave_reason, leave_type)
-
         return "Leave application submitted successfully!"
 
     return render_template('apply_leave.html')
 
-# Save leave application to DB
+# Save leave application
 def save_leave_application(emp_code, leave_start, leave_end, leave_reason, leave_type):
     connection = get_db_connection()
-    cursor = connection.cursor()
-    
-    cursor.execute("""
-        INSERT INTO leave_application_emp 
-        (emp_code, leave_start, leave_end, leave_reason, leave_type) 
-        VALUES (:emp_code, :leave_start, :leave_end, :leave_reason, :leave_type)
-    """, {
-        'emp_code': emp_code,
-        'leave_start': leave_start,
-        'leave_end': leave_end,
-        'leave_reason': leave_reason,
-        'leave_type': leave_type
-    })
-    connection.commit()
-    connection.close()
+    if not connection:
+        return
 
-# Run locally
+    try:
+        cursor = connection.cursor()
+        cursor.execute("""
+            INSERT INTO leave_application_emp (emp_code, leave_start, leave_end, leave_reason, leave_type)
+            VALUES (:emp_code, :leave_start, :leave_end, :leave_reason, :leave_type)
+        """, {
+            'emp_code': emp_code,
+            'leave_start': leave_start,
+            'leave_end': leave_end,
+            'leave_reason': leave_reason,
+            'leave_type': leave_type
+        })
+        connection.commit()
+    finally:
+        connection.close()
+
+# Default route
+@app.route('/')
+def home():
+    return redirect(url_for('login'))
+
 if __name__ == '__main__':
     app.run(debug=True)
