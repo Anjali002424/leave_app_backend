@@ -5,3 +5,7 @@ flask-session==0.4.0
 gunicorn==20.1.0
 streamlit==1.45.0
 pandas==2.2.3
+
+flask-session
+oracledb
+
