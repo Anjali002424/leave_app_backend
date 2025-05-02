@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apply for Leave</title>
+</head>
+<body>
+    <h2>Apply for Leave</h2>
+    <form action="{{ url_for('apply_leave') }}" method="POST">
+        <label for="leave_start">Leave Start Date:</label>
+        <input type="date" id="leave_start" name="leave_start" required><br><br>
+
+        <label for="leave_end">Leave End Date:</label>
+        <input type="date" id="leave_end" name="leave_end" required><br><br>
+
+        <label for="leave_reason">Leave Reason:</label>
+        <textarea id="leave_reason" name="leave_reason" required></textarea><br><br>
+
+        <label for="leave_type">Leave Type:</label>
+        <select id="leave_type" name="leave_type" required>
+            <option value="CL">Casual Leave (CL)</option>
+            <option value="PL">Privilege Leave (PL)</option>
+            <option value="SL">Sick Leave (SL)</option>
+        </select><br><br>
+
+        <button type="submit">Submit Leave Application</button>
+    </form>
+</body>
+</html>
