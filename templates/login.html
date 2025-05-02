@@ -6,13 +6,15 @@
     <title>Login</title>
 </head>
 <body>
-    <h1>Login to Leave Management System</h1>
-    <form method="POST">
+    <h2>Login</h2>
+    <form action="{{ url_for('login') }}" method="POST">
         <label for="emp_code">Employee Code:</label>
         <input type="text" id="emp_code" name="emp_code" required><br><br>
+
         <label for="password">Password:</label>
         <input type="password" id="password" name="password" required><br><br>
-        <input type="submit" value="Login">
+
+        <button type="submit">Login</button>
     </form>
 </body>
 </html>
