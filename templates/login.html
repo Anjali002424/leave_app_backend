@@ -1,13 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login</title>
 </head>
 <body>
-    <h2>Login</h2>
-    <form action="{{ url_for('login') }}" method="POST">
+    <h2>Employee Login</h2>
+    <form method="POST" action="/login">
         <label for="emp_code">Employee Code:</label>
         <input type="text" id="emp_code" name="emp_code" required><br><br>
 
