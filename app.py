@@ -1,27 +1,26 @@
 import os
-import oracledb
+import oracledb  # Use oracledb, not cx_Oracle
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_session import Session
 
 # Initialize Flask app
 app = Flask(__name__)
-
-# Set up session management
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'mapra042473')
 app.config['SESSION_TYPE'] = 'filesystem'
 Session(app)
 
-# Set up oracledb to use thin mode (no Oracle Instant Client required)
-oracledb.init_oracle_client(lib_dir=None)
+# Use Thin mode by default (do NOT call init_oracle_client)
+oracledb.init_oracle_client = lambda *args, **kwargs: None  # Just to be safe
 
 # Function to get DB connection
 def get_db_connection():
-    username = os.environ.get('DB_USERNAME', 'perfect')
-    password = os.environ.get('DB_PASSWORD', 'perfect')
-    dsn = os.environ.get('DB_DSN', '192.168.0.224:1521/ho')  # host:port/service
+    username = 'perfect'
+    password = 'perfect'
+    dsn = '192.168.0.224/ho'  # Thin mode style DSN
 
     connection = oracledb.connect(user=username, password=password, dsn=dsn)
     return connection
+
 
 # Home route - redirects to login
 @app.route('/')
