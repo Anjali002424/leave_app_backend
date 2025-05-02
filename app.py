@@ -1,5 +1,5 @@
 import os
-import cx_Oracle
+import oracledb
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_session import Session
 
@@ -11,16 +11,16 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'mapra042473')
 app.config['SESSION_TYPE'] = 'filesystem'
 Session(app)
 
+# Set up oracledb to use thin mode (no Oracle Instant Client required)
+oracledb.init_oracle_client(lib_dir=None)
+
 # Function to get DB connection
 def get_db_connection():
-    tns_path = r'C:\Program Files\Oracle Client for Microsoft Tools\network\admin'  # Update this if needed
-    os.environ['TNS_ADMIN'] = tns_path
+    username = os.environ.get('DB_USERNAME', 'perfect')
+    password = os.environ.get('DB_PASSWORD', 'perfect')
+    dsn = os.environ.get('DB_DSN', '192.168.0.224:1521/ho')  # host:port/service
 
-    username = 'perfect'
-    password = 'perfect'
-    dsn = cx_Oracle.makedsn('192.168.0.224', '1521', service_name='ho')
-
-    connection = cx_Oracle.connect(username, password, dsn)
+    connection = oracledb.connect(user=username, password=password, dsn=dsn)
     return connection
 
 # Home route - redirects to login
@@ -52,7 +52,6 @@ def check_credentials(emp_code, password):
     connection = get_db_connection()
     cursor = connection.cursor()
 
-    # Note: Column names are EMPCODE, PASSWORD, and EMNAME
     cursor.execute("""
         SELECT EMNAME FROM EMPLOYEE_MAS
         WHERE EMPCODE = :emp_code AND PASSWORD = :password
